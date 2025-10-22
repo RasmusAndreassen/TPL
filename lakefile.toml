@@ -1,0 +1,10 @@
+name = "TPL"
+version = "0.1.0"
+defaultTargets = ["tpl"]
+
+[[lean_lib]]
+name = "TPL"
+
+[[lean_exe]]
+name = "tpl"
+root = "Main"
