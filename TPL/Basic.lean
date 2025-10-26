@@ -9,6 +9,11 @@ inductive T where
   | cond (t₁ t₂ t₃ : T) : T
   deriving DecidableEq
 
+macro_rules
+  | `(if $t₁ then $t₂ else $t₃) => `(T.cond $t₁ $t₂ $t₃)
+
+#check T.rec
+
 def T.ofNat (n : Nat) : T :=
   match n with
   | 0 => .zero
@@ -24,34 +29,104 @@ def T.numeric : T → Prop
   | _ => False
 
 @[simp]
-def T.succ_numeric {t : T} : t.succ.numeric ↔ t.numeric := by
+theorem T.zero_numeric : T.numeric 0 := by trivial
+
+@[simp]
+theorem T.succ_numeric {t : T} : t.succ.numeric ↔ t.numeric := by
   constructor <;> intro h
   · assumption
   · assumption
 
 @[simp]
-def T.pred_numeric {t : T} : t.succ.numeric ↔ t.numeric := by
+theorem T.pred_numeric {t : T} : t.succ.numeric ↔ t.numeric := by
   constructor <;> intro h
   · assumption
   · assumption
 
-def T.toNat (t : T) {_ : numeric t} : Nat :=
+@[simp]
+theorem T.false_not_numeric : ¬ T.false.numeric := by
+  unfold T.numeric
+  trivial
+
+@[simp]
+theorem T.true_not_numeric : ¬ T.true.numeric := by
+  unfold T.numeric
+  trivial
+
+@[simp]
+theorem T.isZero_not_numeric : ¬ T.numeric (.isZero t) := by
+  unfold numeric
+  trivial
+
+@[simp]
+theorem T.cond_not_numeric : ¬ (if t₁ then t₂ else t₃).numeric := by
+  unfold numeric
+  trivial
+
+def T.bnumeric : T → Bool
+  | 0 => .true
+  | .succ tᵢ | .pred tᵢ => tᵢ.bnumeric
+  | _ => .false
+
+
+
+instance {t : T} : Decidable t.numeric := by
+  apply decidable_of_bool t.bnumeric
+  
+  induction t with unfold T.bnumeric T.numeric
+  | zero =>
+    simp
+  | pred | succ t' ih =>
+    assumption
+  | true | false => simp
+  | cond _ _ _ _ _ _ => simp
+  | isZero _ => simp
+
+def T.toNat (t : T) (h : numeric t) : Nat :=
   match t with
   | 0 => 0
   | succ n' => by
     simp at *
-    exact n'.toNat
+    exact (n'.toNat h).succ
   | pred n' => by
-    have := pred_numeric h
-    exact t.toNat.pred
+    exact (n'.toNat h).pred
 
-
-
-def T.ofBool (b : Bool) : T
-  := if b then .true else .false
+def T.ofBool : Bool → T
+  | .true => .true
+  | .false => .false
 
 theorem T.zero_constructor : 0 = .zero := by trivial
-  
+
+def T.numeral : T → Prop
+  | .zero => True
+  | .succ t' => t'.numeral
+  | _ => False
+
+def T.bnumeral : T → Bool
+  | .zero => .true
+  | .succ t' => t'.bnumeral
+  | _ => .false
+
+instance : DecidablePred T.numeral := by
+  intro t
+  apply decidable_of_bool t.bnumeral
+  induction t with unfold T.numeral T.bnumeral <;> try simp
+  | succ t ih =>
+    assumption
+
+@[simp]
+theorem T.succ_numeral {t : T} : t.succ.numeral ↔ t.numeral := by
+  constructor <;> intro h
+  · trivial
+  · trivial
+
+theorem T.numeric_of_numeral {t : T}: t.numeral → t.numeric := by
+  intro h
+  induction t with try simp
+  | zero => assumption
+  | succ tᵢ ih =>
+    simp at h
+    exact ih h
 
 instance : Coe Bool T where
   coe := T.ofBool
@@ -59,9 +134,6 @@ instance : Coe Bool T where
 attribute [coe] T.ofBool
 
 example : T := true
-
-macro_rules
-  | `(if $t₁ then $t₂ else $t₃) => `(T.cond $t₁ $t₂ $t₃)
 
 example {t₁ t₂ t₃ : T} : T := if t₁ then t₂ else t₃
 
@@ -73,9 +145,12 @@ def T.repr (t : T) (n : Nat) : Std.Format :=
   match t with
   | true => Bool.true.repr n
   | false => Bool.false.repr n
-  | 0 => t.toNat.repr
-  | succ _ => t.toNat.repr
-  | pred _ => t.toNat.repr
+  | 0 => Nat.zero.repr
+  | succ tᵢ => by
+    by_cases h : tᵢ.numeral
+    · exact tᵢ.toNat h
+    · 
+  | pred tᵢ => "pred " ++ (tᵢ.repr n)
   | if t₁ then t₂ else t₃ => "if " ++ t₁.repr n ++ " then " ++ t₂.repr n ++ " else " ++ t₃.repr n
   | isZero t₁ => "isZero " ++ t₁.repr n
 
