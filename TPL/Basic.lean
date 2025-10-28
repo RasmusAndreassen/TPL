@@ -157,6 +157,27 @@ instance : Repr T where
 
 #eval if .succ 0 then 0 else 0
 
+def T.step : T → T
+  | if t₁ then t₂ else t₃ =>
+    match t₁ with
+    | .true => t₂
+    | .false => t₃
+    | t₁ => if t₁.step then t₂ else t₃
+  | .isZero tᵢ =>
+    match tᵢ with
+    | 0 => true
+    | .succ _ => false
+    | tᵢ => .isZero tᵢ.step
+  | .pred tᵢ =>
+    match tᵢ with
+    | 0 => 0
+    | .succ tᵢ' => tᵢ'
+    | tᵢ => .pred tᵢ.step
+  | .succ tᵢ => .succ tᵢ.step
+  | t => t
+
+#eval (if .pred (.succ 0) then 0 else 0).step
+
 def T.derives_to (t t' : T) : Prop :=
   match t with
   | 0 => False
