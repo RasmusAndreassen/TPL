@@ -122,11 +122,10 @@ theorem T.succ_numeral {t : T} : t.succ.numeral ↔ t.numeral := by
 
 theorem T.numeric_of_numeral {t : T}: t.numeral → t.numeric := by
   intro h
-  induction t with try simp
+  induction t with unfold T.numeral at h <;> try contradiction
   | zero => assumption
-  | succ tᵢ ih =>
-    simp at h
-    exact ih h
+  | succ tᵢ ih => exact ih h
+
 
 instance : Coe Bool T where
   coe := T.ofBool
@@ -139,8 +138,6 @@ example {t₁ t₂ t₃ : T} : T := if t₁ then t₂ else t₃
 
 example : T := if 9 then 0 else 5
 
-
-
 def T.repr (t : T) (n : Nat) : Std.Format :=
   match t with
   | true => Bool.true.repr n
@@ -148,14 +145,17 @@ def T.repr (t : T) (n : Nat) : Std.Format :=
   | 0 => Nat.zero.repr
   | succ tᵢ => by
     by_cases h : tᵢ.numeral
-    · exact tᵢ.toNat h
-    · 
+    · have h := T.numeric_of_numeral h
+      exact (tᵢ.toNat h).succ.repr.toFormat
+    · exact "succ" ++ tᵢ.repr n
   | pred tᵢ => "pred " ++ (tᵢ.repr n)
   | if t₁ then t₂ else t₃ => "if " ++ t₁.repr n ++ " then " ++ t₂.repr n ++ " else " ++ t₃.repr n
   | isZero t₁ => "isZero " ++ t₁.repr n
 
 instance : Repr T where
   reprPrec := T.repr
+
+#eval if .succ 0 then 0 else 0
 
 def T.derives_to (t t' : T) : Prop :=
   match t with
@@ -172,12 +172,7 @@ def T.derives_to (t t' : T) : Prop :=
 
 infix:200 " → " => T.derives_to
 
-instance : DecidableRel (α := T) (· → ·) := by
-  intro t
-  induction t using ?_ with
 
 
     
-
-#eval 0 → 0
 
